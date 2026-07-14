@@ -1,0 +1,11 @@
+* text=auto
+
+*.py text eol=lf
+*.html text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.spec text eol=lf
+*.bat text eol=crlf
+
+*.png binary
+*.ico binary

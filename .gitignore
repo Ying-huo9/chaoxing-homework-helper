@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+packaging/
+*.exe
+*.msi
+*.zip
+_internal/
+.runtime/
+
+# Local application state and credentials
+settings.json
+**/settings.json
+webview_data/
+**/webview_data/
+chrome/
+**/chrome/
+browser/
+**/browser/
+logs/
+**/logs/
+
+# User input and generated course data
+*.mht
+*.mhtml
+*.docx
+*.xlsx
+*.xls
+产出文件/
+**/产出文件/
+
+# Editor and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Internal development notes
+HANDOFF.md

@@ -1,0 +1,7 @@
+beautifulsoup4
+DrissionPage
+openpyxl
+pyinstaller
+pywebview
+python-docx
+requests

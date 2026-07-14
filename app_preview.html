@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<title>超星作业抓取助手</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-stage: #000000;
+    --bg-stage-soft: rgba(10, 10, 14, 0.93);
+    --bg-panel: rgba(20, 20, 28, 0.95);
+    --bg-panel-light: rgba(24, 23, 26, 0.96);
+    --bg-hover: rgba(255, 255, 255, 0.08);
+    --bg-active: rgba(255, 255, 255, 0.12);
+
+    --border-gold: rgba(244, 210, 138, 0.24);
+    --border-gold-light: rgba(244, 210, 138, 0.22);
+    --border-subtle: rgba(255, 255, 255, 0.035);
+    --border-default: rgba(255, 255, 255, 0.12);
+    --border-strong: rgba(255, 255, 255, 0.07);
+
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.70);
+    --text-muted: rgba(255, 255, 255, 0.38);
+    --text-gold: #fff0bf;
+
+    --accent-gold: #f4d28a;
+    --accent-teal: #00f5d4;
+    --accent-blue: #7fd8ff;
+
+    --shadow-panel: 0 20px 60px rgba(0, 0, 0, 0.44);
+    --shadow-float: 0 0 0 1px rgba(255, 255, 255, 0.035);
+    --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+
+    --panel-gradient: linear-gradient(180deg, rgba(24, 23, 26, 0.96), rgba(10, 10, 14, 0.93));
+  }
+
+  /* ── 浅色主题覆盖 ───────────────────────────────────────── */
+  html[data-theme="light"] {
+    --bg-stage: #f4f1ea;
+    --bg-stage-soft: rgba(255, 255, 255, 0.85);
+    --bg-panel: rgba(255, 255, 255, 0.85);
+    --bg-panel-light: rgba(255, 255, 255, 0.92);
+    --bg-hover: rgba(0, 0, 0, 0.05);
+    --bg-active: rgba(0, 0, 0, 0.08);
+
+    --border-gold: rgba(190, 140, 40, 0.30);
+    --border-gold-light: rgba(190, 140, 40, 0.26);
+    --border-subtle: rgba(0, 0, 0, 0.05);
+    --border-default: rgba(0, 0, 0, 0.10);
+    --border-strong: rgba(0, 0, 0, 0.08);
+
+    --text-primary: #1c1a16;
+    --text-secondary: rgba(28, 26, 22, 0.68);
+    --text-muted: rgba(28, 26, 22, 0.42);
+    --text-gold: #8a6314;
+
+    --accent-gold: #b8860f;
+    --accent-teal: #0c9c84;
+    --accent-blue: #1c7fb8;
+
+    --shadow-panel: 0 20px 50px rgba(28, 26, 22, 0.10);
+    --shadow-float: 0 0 0 1px rgba(28, 26, 22, 0.03);
+    --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+    --panel-gradient: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 245, 238, 0.88));
+  }
+
+  html[data-theme="light"] body {
+    background: radial-gradient(ellipse at 50% -10%, rgba(184, 134, 15, 0.07), transparent 50%), #f4f1ea;
+  }
+
+  html[data-theme="light"] .stage-bg {
+    background-image:
+      radial-gradient(1px 1px at 12% 22%, rgba(184,134,15,0.30), transparent),
+      radial-gradient(1px 1px at 78% 14%, rgba(28,26,22,0.10), transparent),
+      radial-gradient(1.5px 1.5px at 35% 68%, rgba(184,134,15,0.20), transparent),
+      radial-gradient(1px 1px at 90% 60%, rgba(28,26,22,0.08), transparent),
+      radial-gradient(1px 1px at 55% 85%, rgba(184,134,15,0.16), transparent),
+      radial-gradient(1.5px 1.5px at 8% 80%, rgba(28,26,22,0.07), transparent);
+  }
+
+  html[data-theme="light"] .text-input { color: var(--text-primary); }
+
+  html[data-theme="light"] .folder-picker,
+  html[data-theme="light"] .file-row,
+  html[data-theme="light"] .stat-box,
+  html[data-theme="light"] .course-card,
+  html[data-theme="light"] .text-input {
+    background: rgba(28, 26, 22, 0.035);
+  }
+
+  html[data-theme="light"] .file-row:hover,
+  html[data-theme="light"] .course-card:hover {
+    background: rgba(28, 26, 22, 0.06);
+  }
+
+  html[data-theme="light"] .btn {
+    background: rgba(28, 26, 22, 0.06);
+  }
+
+  html[data-theme="light"] .btn:hover { background: rgba(28, 26, 22, 0.10); color: var(--text-primary); }
+
+  html[data-theme="light"] .toggle { background: rgba(28, 26, 22, 0.12); }
+  html[data-theme="light"] .toggle::after { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+
+  html[data-theme="light"] .file-status.pending { background: rgba(28, 26, 22, 0.08); }
+  html[data-theme="light"] .file-status.ok { background: rgba(12, 156, 132, 0.14); }
+  html[data-theme="light"] .file-status.processing { background: rgba(184, 134, 15, 0.16); }
+
+  html[data-theme="light"] .progress-track { background: rgba(28, 26, 22, 0.10); }
+
+  html[data-theme="light"] .brand-mark {
+    box-shadow: 0 0 14px rgba(184, 134, 15, 0.3);
+  }
+
+  * { transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease; }
+
+  body {
+    background: radial-gradient(ellipse at 50% -10%, rgba(244, 210, 138, 0.06), transparent 50%), #000;
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+    min-height: 100vh;
+    overflow-x: hidden;
+    transition: background 0.35s ease;
+  }
+
+  /* ── 粒子氛围背景 ───────────────────────────────────────── */
+  .stage-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(1px 1px at 12% 22%, rgba(244,210,138,0.35), transparent),
+      radial-gradient(1px 1px at 78% 14%, rgba(255,255,255,0.18), transparent),
+      radial-gradient(1.5px 1.5px at 35% 68%, rgba(244,210,138,0.22), transparent),
+      radial-gradient(1px 1px at 90% 60%, rgba(255,255,255,0.14), transparent),
+      radial-gradient(1px 1px at 55% 85%, rgba(244,210,138,0.18), transparent),
+      radial-gradient(1.5px 1.5px at 8% 80%, rgba(255,255,255,0.12), transparent);
+    opacity: 0.8;
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 28px 32px 64px;
+  }
+
+  /* ── 顶部栏 ───────────────────────────────────────── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .brand-mark {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent-gold), #c9a35f);
+    box-shadow: 0 0 18px rgba(244, 210, 138, 0.35);
+  }
+
+  .brand-name {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  .brand-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+
+  /* ── 模式切换 Tab ───────────────────────────────────────── */
+  .mode-switch {
+    display: inline-flex;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-default);
+    border-radius: 10px;
+    padding: 3px;
+    backdrop-filter: blur(20px);
+  }
+
+  .mode-tab {
+    padding: 7px 18px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    letter-spacing: 0.3px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.25s, color 0.25s;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .mode-tab.active {
+    background: rgba(244, 210, 138, 0.12);
+    color: var(--accent-gold);
+  }
+
+  .mode-tab:not(.active):hover {
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+  }
+
+  .dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.7;
+  }
+
+  /* ── 主题切换按钮 ───────────────────────────────────────── */
+  .theme-toggle {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-default);
+    backdrop-filter: blur(20px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background 0.25s, border-color 0.25s, transform 0.2s;
+    user-select: none;
+  }
+
+  .theme-toggle:hover {
+    background: rgba(244, 210, 138, 0.1);
+    border-color: var(--border-gold-light);
+  }
+
+  .theme-toggle:active { transform: scale(0.92); }
+
+  .theme-toggle.spin #theme-icon {
+    animation: theme-flip 0.4s ease;
+  }
+
+  @keyframes theme-flip {
+    0%   { transform: rotate(0deg) scale(1); }
+    50%  { transform: rotate(180deg) scale(0.7); }
+    100% { transform: rotate(360deg) scale(1); }
+  }
+
+  /* ── 玻璃面板 ───────────────────────────────────────── */
+  .glass-panel {
+    background: var(--panel-gradient);
+    border: 1px solid var(--border-gold);
+    border-radius: 12px;
+    box-shadow: var(--shadow-panel), var(--shadow-float), var(--shadow-inset);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .glass-panel-plain {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-default);
+    border-radius: 10px;
+    backdrop-filter: blur(20px);
+  }
+
+  /* ── 布局网格 ───────────────────────────────────────── */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 20px;
+    margin-top: 22px;
+  }
+
+  .panel-pad { padding: 24px 26px; }
+
+  .section-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-desc {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-bottom: 18px;
+    line-height: 1.5;
+  }
+
+  .icon-badge {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background: rgba(244, 210, 138, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: var(--accent-gold);
+  }
+
+  /* ── 文件夹选择区 ───────────────────────────────────────── */
+  .folder-picker {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed var(--border-default);
+    border-radius: 10px;
+    margin-bottom: 18px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .folder-picker:hover {
+    border-color: var(--border-gold-light);
+    background: rgba(244, 210, 138, 0.04);
+  }
+
+  .folder-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(244, 210, 138, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-gold);
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .folder-path {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    font-family: 'SF Mono', Consolas, monospace;
+  }
+
+  .folder-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* ── 文件列表 ───────────────────────────────────────── */
+  .file-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 20px;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+
+  .file-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-subtle);
+    font-size: 12px;
+    transition: background 0.15s;
+  }
+
+  .file-row:hover { background: rgba(255, 255, 255, 0.05); }
+
+  .file-status {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    flex-shrink: 0;
+  }
+
+  .file-status.ok { background: rgba(0, 245, 212, 0.15); color: var(--accent-teal); }
+  .file-status.pending { background: rgba(255, 255, 255, 0.08); color: var(--text-muted); }
+  .file-status.processing {
+    background: rgba(244, 210, 138, 0.15);
+    color: var(--accent-gold);
+    animation: spin 1.2s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .file-name { flex: 1; color: var(--text-secondary); }
+  .file-meta { color: var(--text-muted); font-size: 11px; }
+
+  /* ── 进度条 ───────────────────────────────────────── */
+  .progress-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .progress-track {
+    flex: 1;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 68%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent-gold), #fff0bf);
+    box-shadow: 0 0 10px rgba(244, 210, 138, 0.5);
+  }
+
+  .progress-label {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── 按钮 ───────────────────────────────────────── */
+  .btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+    letter-spacing: 0.25px;
+    padding: 9px 18px;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+  }
+
+  .btn:hover { background: var(--bg-hover); color: #fff; }
+
+  .btn-gold {
+    border-color: rgba(244, 210, 138, 0.4);
+    color: var(--accent-gold);
+    background: rgba(244, 210, 138, 0.06);
+  }
+
+  .btn-gold:hover { background: rgba(244, 210, 138, 0.14); }
+
+  .btn-row { display: flex; gap: 10px; }
+
+  /* ── 右侧统计卡 ───────────────────────────────────────── */
+  .stat-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .stat-box {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 14px 14px;
+  }
+
+  .stat-num {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stat-num.gold { color: var(--accent-gold); }
+  .stat-num.teal { color: var(--accent-teal); }
+
+  .stat-label {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    margin-top: 3px;
+    letter-spacing: 0.2px;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 4px 0;
+  }
+
+  .opt-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 0;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .toggle {
+    width: 34px;
+    height: 19px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    position: relative;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .toggle.on { background: rgba(244, 210, 138, 0.35); }
+
+  .toggle::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: #fff;
+    transition: left 0.2s;
+  }
+
+  .toggle.on::after { left: 17px; background: var(--accent-gold); }
+
+  /* ── 课程选择卡片（在线模式专用） ───────────────────────────────────────── */
+  .course-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .course-card {
+    padding: 13px 14px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid var(--border-subtle);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .course-card:hover { background: rgba(255, 255, 255, 0.05); }
+
+  .course-card.selected {
+    border-color: var(--border-gold-light);
+    background: rgba(244, 210, 138, 0.06);
+  }
+
+  .course-name {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    line-height: 1.4;
+  }
+
+  .course-card.selected .course-name { color: #fff; }
+
+  .course-meta {
+    font-size: 10.5px;
+    color: var(--text-muted);
+  }
+
+  .course-check {
+    float: right;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid var(--border-default);
+  }
+
+  .course-card.selected .course-check {
+    border-color: var(--accent-gold);
+    background: var(--accent-gold);
+  }
+
+  /* ── 登录表单（在线模式） ───────────────────────────────────────── */
+  .input-group { margin-bottom: 14px; }
+
+  .input-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    display: block;
+    letter-spacing: 0.3px;
+  }
+
+  .text-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    padding: 9px 12px;
+    color: #fff;
+    font-size: 12.5px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .text-input:focus { border-color: var(--border-gold-light); }
+
+  /* ── Toast ───────────────────────────────────────── */
+  #toast {
+    position: fixed;
+    z-index: 200;
+    top: 26px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    background: var(--bg-panel);
+    border: 1px solid var(--border-default);
+    backdrop-filter: blur(20px);
+    color: var(--text-primary);
+    font-size: 12.5px;
+    letter-spacing: 0.5px;
+    padding: 10px 18px;
+    border-radius: 10px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s, transform 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .toast-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-teal);
+    box-shadow: 0 0 6px var(--accent-teal);
+  }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* 滚动条 */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 999px; }
+</style>
+</head>
+<body>
+
+<div class="stage-bg"></div>
+<div id="toast"><span class="toast-dot"></span><span id="toast-text"></span></div>
+
+<div class="app">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-name">超星作业抓取助手</div>
+        <div class="brand-sub">CHAOXING EXTRACTOR</div>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div class="mode-switch">
+        <div class="mode-tab active" onclick="switchMode('local')" id="tab-local">
+          <span class="dot"></span>本地模式
+        </div>
+        <div class="mode-tab" onclick="switchMode('online')" id="tab-online">
+          <span class="dot"></span>在线模式
+        </div>
+      </div>
+
+      <div class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="切换主题">
+        <span id="theme-icon">🌙</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ 本地模式 ══════════════════════ -->
+  <div class="view active" id="view-local">
+    <div class="grid">
+
+      <!-- 左侧主面板 -->
+      <div class="glass-panel panel-pad">
+        <div class="section-title">
+          <span class="icon-badge">📁</span>选择文件夹
+        </div>
+        <div class="section-desc">指定一个包含 .mhtml 作业文件的文件夹，处理结果将保存在该文件夹内的「产出文件」子目录中</div>
+
+        <div class="folder-picker" onclick="showToast('已选择文件夹')">
+          <div class="folder-icon">📂</div>
+          <div>
+            <div class="folder-path">E:\学习通爬取\健康评估2026春</div>
+            <div class="folder-hint">点击重新选择 · 共找到 12 个 .mhtml 文件</div>
+          </div>
+        </div>
+
+        <div class="section-title" style="margin-top: 22px;">
+          <span class="icon-badge">📄</span>文件列表
+        </div>
+        <div class="file-list">
+          <div class="file-row"><div class="file-status ok">✓</div><div class="file-name">01_房室扑动、颤动及房室传导阻滞.mhtml</div><div class="file-meta">21题</div></div>
+          <div class="file-row"><div class="file-status ok">✓</div><div class="file-name">02_窦性心律失常、早搏、心动过速.mhtml</div><div class="file-meta">18题</div></div>
+          <div class="file-row"><div class="file-status ok">✓</div><div class="file-name">03_房室肥大及心肌缺血、心肌梗死.mhtml</div><div class="file-meta">15题</div></div>
+          <div class="file-row"><div class="file-status processing">↻</div><div class="file-name">04_心电图基本知识.mhtml</div><div class="file-meta">解析中…</div></div>
+          <div class="file-row"><div class="file-status pending">·</div><div class="file-name">05_影像学测试题.mhtml</div><div class="file-meta">等待中</div></div>
+          <div class="file-row"><div class="file-status pending">·</div><div class="file-name">06_尿液检查章节测验.mhtml</div><div class="file-meta">等待中</div></div>
+          <div class="file-row"><div class="file-status pending">·</div><div class="file-name">07_肝脏疾病实验室检查章节测验.mhtml</div><div class="file-meta">等待中</div></div>
+        </div>
+
+        <div class="progress-row">
+          <div class="progress-track"><div class="progress-fill"></div></div>
+          <div class="progress-label">8 / 12</div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-gold" onclick="showToast('开始批量处理')">开始处理</button>
+          <button class="btn" onclick="showToast('已暂停')">暂停</button>
+        </div>
+      </div>
+
+      <!-- 右侧统计 + 选项面板 -->
+      <div class="stat-card">
+        <div class="glass-panel-plain panel-pad">
+          <div class="section-title" style="margin-bottom: 14px;">
+            <span class="icon-badge">📊</span>处理统计
+          </div>
+          <div class="stat-grid">
+            <div class="stat-box">
+              <div class="stat-num gold">12</div>
+              <div class="stat-label">已解析作业</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-num">293</div>
+              <div class="stat-label">题目总数</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-num teal">273</div>
+              <div class="stat-label">答对题数</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-num">3738.8</div>
+              <div class="stat-label">总得分</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-panel-plain panel-pad">
+          <div class="section-title" style="margin-bottom: 4px;">
+            <span class="icon-badge">⚙️</span>导出选项
+          </div>
+          <div class="divider" style="margin-top: 10px;"></div>
+          <div class="opt-row">
+            下载并嵌入图片
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="opt-row">
+            按题型自动分类
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="opt-row">
+            标注课程/班级信息
+            <div class="toggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="divider"></div>
+          <div style="font-size: 11px; color: var(--text-muted); line-height: 1.6; margin-top: 8px;">
+            产出位置：<br>
+            <span style="color: var(--text-secondary); font-family: monospace;">…\健康评估2026春\产出文件\</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════ 在线模式 ══════════════════════ -->
+  <div class="view" id="view-online">
+    <div class="grid">
+
+      <div class="glass-panel panel-pad">
+        <div class="section-title">
+          <span class="icon-badge">🎓</span>选择课程
+        </div>
+        <div class="section-desc">登录成功，已找到 104 门课程，选择需要抓取作业的课程（可多选）</div>
+
+        <div class="course-grid">
+          <div class="course-card selected">
+            <div class="course-check"></div>
+            <div class="course-name">健康评估2026春</div>
+            <div class="course-meta">12份作业 · 进度100%</div>
+          </div>
+          <div class="course-card">
+            <div class="course-check"></div>
+            <div class="course-name">病理生理学(4年制)2025-2026</div>
+            <div class="course-meta">8份作业 · 进度85%</div>
+          </div>
+          <div class="course-card selected">
+            <div class="course-check"></div>
+            <div class="course-name">护理教育</div>
+            <div class="course-meta">5份作业 · 进度100%</div>
+          </div>
+          <div class="course-card">
+            <div class="course-check"></div>
+            <div class="course-name">医学微生物学（2025-2026-2）</div>
+            <div class="course-meta">10份作业 · 进度92%</div>
+          </div>
+          <div class="course-card">
+            <div class="course-check"></div>
+            <div class="course-name">药理学（B）</div>
+            <div class="course-meta">6份作业 · 进度78%</div>
+          </div>
+          <div class="course-card">
+            <div class="course-check"></div>
+            <div class="course-name">护理社会学</div>
+            <div class="course-meta">4份作业 · 进度100%</div>
+          </div>
+        </div>
+
+        <div class="section-title">
+          <span class="icon-badge">📋</span>作业列表 · 健康评估2026春
+        </div>
+        <div class="file-list" style="max-height: 180px;">
+          <div class="file-row"><div class="file-status ok">✓</div><div class="file-name">房室扑动、颤动及房室传导阻滞</div><div class="file-meta">已完成</div></div>
+          <div class="file-row"><div class="file-status ok">✓</div><div class="file-name">窦性心律失常、早搏、心动过速</div><div class="file-meta">已完成</div></div>
+          <div class="file-row"><div class="file-status processing">↻</div><div class="file-name">房室肥大及心肌缺血、心肌梗死</div><div class="file-meta">抓取中…</div></div>
+          <div class="file-row"><div class="file-status pending">·</div><div class="file-name">心电图基本知识</div><div class="file-meta">等待中</div></div>
+        </div>
+
+        <div class="progress-row">
+          <div class="progress-track"><div class="progress-fill" style="width: 42%;"></div></div>
+          <div class="progress-label">5 / 12</div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-gold" onclick="showToast('开始抓取选中课程')">开始抓取</button>
+          <button class="btn" onclick="showToast('已暂停')">暂停</button>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="glass-panel-plain panel-pad">
+          <div class="section-title" style="margin-bottom: 14px;">
+            <span class="icon-badge">🔐</span>账号登录
+          </div>
+          <div class="input-group">
+            <label class="input-label">手机号 / 学号</label>
+            <input class="text-input" type="text" value="177****9810" disabled>
+          </div>
+          <div class="input-group">
+            <label class="input-label">密码</label>
+            <input class="text-input" type="password" value="••••••••" disabled>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 8px 0; font-size: 11.5px; color: var(--accent-teal);">
+            <span class="toast-dot"></span>已登录
+          </div>
+        </div>
+
+        <div class="glass-panel-plain panel-pad">
+          <div class="section-title" style="margin-bottom: 4px;">
+            <span class="icon-badge">📦</span>抓取选项
+          </div>
+          <div class="divider" style="margin-top: 10px;"></div>
+          <div class="opt-row">
+            自动保存中间 mhtml
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="opt-row">
+            断点续传（跳过已抓取）
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="divider"></div>
+          <div style="font-size: 11px; color: var(--text-muted); line-height: 1.6; margin-top: 8px;">
+            产出位置：<br>
+            <span style="color: var(--text-secondary); font-family: monospace;">…\抓取结果\健康评估2026春\</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+function switchMode(mode) {
+  document.getElementById('tab-local').classList.toggle('active', mode === 'local');
+  document.getElementById('tab-online').classList.toggle('active', mode === 'online');
+  document.getElementById('view-local').classList.toggle('active', mode === 'local');
+  document.getElementById('view-online').classList.toggle('active', mode === 'online');
+}
+
+function toggleTheme() {
+  var html = document.documentElement;
+  var btn = document.getElementById('theme-toggle');
+  var icon = document.getElementById('theme-icon');
+  var current = html.getAttribute('data-theme') || 'dark';
+  var next = current === 'dark' ? 'light' : 'dark';
+
+  html.setAttribute('data-theme', next);
+  btn.classList.add('spin');
+  setTimeout(function() { btn.classList.remove('spin'); }, 400);
+  icon.textContent = next === 'dark' ? '🌙' : '☀️';
+
+  showToast(next === 'dark' ? '已切换至深色主题' : '已切换至浅色主题');
+}
+
+var toastTimer = null;
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  document.getElementById('toast-text').textContent = msg;
+  t.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { t.classList.remove('show'); }, 2200);
+}
+
+document.querySelectorAll('.course-card').forEach(function(card) {
+  card.addEventListener('click', function() {
+    card.classList.toggle('selected');
+  });
+});
+</script>
+
+</body>
+</html>

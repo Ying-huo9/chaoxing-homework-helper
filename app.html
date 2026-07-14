@@ -1,0 +1,1470 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>超星作业抓取助手</title>
+<link rel="icon" href="logo.png">
+<script>
+(function() {
+  try {
+    var boot = JSON.parse(localStorage.getItem('chaoxing-extractor-ui') || '{}');
+    var bootParams = new URLSearchParams(window.location.search);
+    var bootTheme = bootParams.get('boot_theme');
+    var bootMode = bootParams.get('boot_mode');
+    if (bootTheme === 'light' || bootTheme === 'dark') boot.theme = bootTheme;
+    if (bootMode === 'local' || bootMode === 'online') boot.mode = bootMode;
+    if (boot.theme === 'light' || boot.theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', boot.theme);
+    }
+    window.__chaoxingBoot = boot;
+  } catch (e) {
+    window.__chaoxingBoot = {};
+  }
+})();
+</script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg-stage: #000;
+  --bg-panel: rgba(20, 20, 28, 0.95);
+  --bg-panel-light: rgba(24, 23, 26, 0.96);
+  --bg-hover: rgba(255, 255, 255, 0.08);
+  --border-gold: rgba(244, 210, 138, 0.24);
+  --border-gold-light: rgba(244, 210, 138, 0.34);
+  --border-default: rgba(255, 255, 255, 0.12);
+  --text-primary: #fff;
+  --text-secondary: rgba(255, 255, 255, 0.70);
+  --text-muted: rgba(255, 255, 255, 0.40);
+  --accent-gold: #f4d28a;
+  --accent-teal: #00f5d4;
+  --toggle-off-track: rgba(255, 255, 255, 0.15);
+  --toggle-off-thumb: rgba(255, 255, 255, 0.78);
+  --toggle-on-track: rgba(244, 210, 138, 0.35);
+  --toggle-thumb-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+  --panel-gradient: linear-gradient(180deg, rgba(24, 23, 26, 0.96), rgba(10, 10, 14, 0.93));
+  --shadow-panel: 0 20px 60px rgba(0, 0, 0, 0.44), 0 0 0 1px rgba(255,255,255,0.035), inset 0 1px 0 rgba(255,255,255,0.07);
+}
+html[data-theme="light"] {
+  --bg-stage: #f4f1ea;
+  --bg-panel: rgba(255, 255, 255, 0.86);
+  --bg-panel-light: rgba(255, 255, 255, 0.94);
+  --bg-hover: rgba(28, 26, 22, 0.06);
+  --border-gold: rgba(190, 140, 40, 0.30);
+  --border-gold-light: rgba(190, 140, 40, 0.38);
+  --border-default: rgba(28, 26, 22, 0.12);
+  --text-primary: #1c1a16;
+  --text-secondary: rgba(28, 26, 22, 0.70);
+  --text-muted: rgba(28, 26, 22, 0.44);
+  --accent-gold: #b8860f;
+  --accent-teal: #0c9c84;
+  --toggle-off-track: #c8c5bd;
+  --toggle-off-thumb: #ffffff;
+  --toggle-on-track: rgba(184, 134, 15, 0.22);
+  --toggle-thumb-shadow: 0 1px 3px rgba(28, 26, 22, 0.25);
+  --panel-gradient: linear-gradient(180deg, rgba(255,255,255,0.93), rgba(248,245,238,0.88));
+  --shadow-panel: 0 20px 50px rgba(28, 26, 22, 0.10), inset 0 1px 0 rgba(255,255,255,0.60);
+}
+body {
+  min-height: 100vh;
+  color: var(--text-primary);
+  background: radial-gradient(ellipse at 50% -10%, rgba(244,210,138,0.06), transparent 52%), var(--bg-stage);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  font-size: 13px;
+  overflow-x: hidden;
+}
+.desktop-titlebar {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 60;
+  height: 38px;
+  display: flex;
+  align-items: stretch;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-default);
+  transition: opacity .12s ease;
+}
+body.settings-loading .desktop-titlebar {
+  opacity: 0;
+  pointer-events: none;
+}
+.desktop-titlebar-drag {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  user-select: none;
+}
+.desktop-titlebar-drag img { width: 20px; height: 20px; border-radius: 4px; }
+.desktop-window-controls { display: flex; flex: 0 0 auto; }
+.desktop-window-button {
+  width: 46px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: "Segoe UI Symbol", "Microsoft YaHei UI", sans-serif;
+  font-size: 16px;
+  cursor: default;
+}
+.desktop-window-button:hover { background: rgba(128,128,128,.16); color: var(--text-primary); }
+.desktop-window-button.close:hover { background: #c42b1c; color: #fff; }
+body.api-loading .api-gated {
+  opacity: .48;
+  pointer-events: none;
+}
+body.settings-loading .app {
+  opacity: 0;
+  pointer-events: none;
+}
+#boot-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  background: var(--bg-stage);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .16s ease;
+}
+body.settings-loading #boot-mask {
+  opacity: 1;
+  pointer-events: auto;
+}
+#boot-mask img {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  box-shadow: 0 16px 38px rgba(238,64,70,.28);
+}
+.boot-loader {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 82px;
+  height: 82px;
+}
+.boot-loader::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(238,64,70,.16);
+  border-top-color: #ee4046;
+  border-right-color: rgba(244,210,138,.9);
+  border-radius: 50%;
+  animation: bootSpin .9s linear infinite;
+}
+@keyframes bootSpin { to { transform: rotate(360deg); } }
+#boot-retry-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 35;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--bg-panel, #1f1f23);
+  color: var(--text-primary, #f1f1f1);
+  font-size: 13px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.35);
+  border: 1px solid rgba(255,255,255,.08);
+}
+#boot-retry-bar.show { display: inline-flex; }
+#boot-retry-bar button {
+  appearance: none;
+  border: 1px solid rgba(238,64,70,.45);
+  background: rgba(238,64,70,.12);
+  color: inherit;
+  font: inherit;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+#boot-retry-bar button:hover { background: rgba(238,64,70,.22); }
+.stage-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: .8;
+  background-image:
+    radial-gradient(1px 1px at 12% 22%, rgba(244,210,138,0.35), transparent),
+    radial-gradient(1px 1px at 78% 14%, rgba(255,255,255,0.18), transparent),
+    radial-gradient(1.5px 1.5px at 35% 68%, rgba(244,210,138,0.22), transparent),
+    radial-gradient(1px 1px at 90% 60%, rgba(255,255,255,0.14), transparent),
+    radial-gradient(1px 1px at 55% 85%, rgba(244,210,138,0.18), transparent);
+}
+.app { position: relative; z-index: 1; max-width: 1180px; margin: 0 auto; padding: 58px 32px 56px; }
+.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-mark { width: 34px; height: 34px; border-radius: 8px; display: block; object-fit: cover; box-shadow: 0 0 18px rgba(238,64,70,.35); }
+.brand-name { font-size: 15px; font-weight: 650; }
+.brand-sub { font-size: 11px; color: var(--text-muted); }
+.top-actions { display: flex; align-items: center; gap: 14px; }
+.mode-switch { display: inline-flex; padding: 3px; border: 1px solid var(--border-default); border-radius: 10px; background: var(--bg-panel); backdrop-filter: blur(20px); }
+.mode-tab { padding: 7px 18px; border-radius: 8px; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.mode-tab.active { background: rgba(244,210,138,.12); color: var(--accent-gold); }
+.dot, .toast-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-gold); box-shadow: 0 0 8px var(--accent-gold); }
+.theme-toggle { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--border-default); background: var(--bg-panel); display: grid; place-items: center; cursor: pointer; }
+.grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(310px, .85fr); gap: 12px; align-items: start; }
+.glass-panel, .glass-panel-plain { backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+.glass-panel { background: var(--panel-gradient); border: 1px solid var(--border-gold); border-radius: 12px; box-shadow: var(--shadow-panel); }
+.glass-panel-plain { background: var(--bg-panel); border: 1px solid var(--border-default); border-radius: 10px; }
+.panel-pad { padding: 18px; }
+.section-title { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-weight: 650; }
+.section-desc, .inline-note { color: var(--text-muted); line-height: 1.6; font-size: 12px; margin-bottom: 14px; }
+.icon-badge { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; background: rgba(244,210,138,.10); color: var(--accent-gold); }
+.folder-picker { display: flex; gap: 12px; align-items: center; padding: 14px 16px; border: 1px dashed var(--border-default); border-radius: 10px; background: rgba(255,255,255,.03); cursor: pointer; }
+.folder-picker:hover, .file-row:hover, .course-card:hover { background: var(--bg-hover); }
+.folder-icon { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: rgba(244,210,138,.11); color: var(--accent-gold); }
+.folder-path, .mono-path { color: var(--text-secondary); word-break: break-all; }
+.folder-hint { color: var(--text-muted); font-size: 11px; margin-top: 4px; }
+.file-list { display: flex; flex-direction: column; gap: 6px; max-height: 286px; overflow-y: auto; margin-bottom: 18px; }
+.file-row { min-height: 38px; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,.04); background: rgba(255,255,255,.03); }
+.file-name { color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-meta { color: var(--text-muted); font-size: 11px; }
+.file-status { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; color: var(--text-muted); background: rgba(255,255,255,.08); }
+.file-status.ok { color: var(--accent-teal); background: rgba(0,245,212,.12); }
+.file-status.processing { color: var(--accent-gold); background: rgba(244,210,138,.14); }
+.file-status.failed { color: #ff8a8a; background: rgba(255,90,90,.14); }
+.progress-row { display: grid; grid-template-columns: minmax(0, 1fr) 92px; align-items: center; gap: 12px; margin: 14px 0; }
+.progress-track { height: 7px; border-radius: 99px; background: rgba(255,255,255,.10); overflow: hidden; }
+.progress-fill { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--accent-gold), #fff0bf); box-shadow: 0 0 10px rgba(244,210,138,.5); transition: width .25s ease; }
+.progress-label { color: var(--text-muted); font-size: 11px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn { min-height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--border-default); background: rgba(255,255,255,.08); color: var(--text-secondary); cursor: pointer; font: inherit; font-size: 12px; }
+.btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn-gold { border-color: rgba(244,210,138,.40); color: var(--accent-gold); background: rgba(244,210,138,.06); }
+.stat-card { display: flex; flex-direction: column; gap: 16px; }
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.primary-column { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.wide-stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.stat-box { min-height: 70px; padding: 13px; border-radius: 10px; border: 1px solid var(--border-default); background: rgba(255,255,255,.035); }
+.stat-num { font-size: 22px; font-weight: 700; color: var(--text-primary); }
+.stat-num.gold { color: var(--accent-gold); }
+.stat-num.teal { color: var(--accent-teal); }
+.stat-label { color: var(--text-muted); font-size: 11px; margin-top: 5px; }
+.divider { height: 1px; background: var(--border-default); margin: 12px 0; }
+.opt-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 0; color: var(--text-secondary); }
+.toggle { width: 34px; height: 19px; border-radius: 99px; background: var(--toggle-off-track); position: relative; cursor: pointer; flex: 0 0 auto; transition: background .2s ease; }
+.toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; border-radius: 50%; background: var(--toggle-off-thumb); box-shadow: var(--toggle-thumb-shadow); transition: left .2s ease, background .2s ease; }
+.toggle.on { background: var(--toggle-on-track); }
+.toggle.on::after { left: 17px; background: var(--accent-gold); }
+.input-group { margin-bottom: 12px; }
+.input-label { display: block; color: var(--text-muted); font-size: 11px; margin-bottom: 6px; }
+.text-input { width: 100%; border: 1px solid var(--border-default); border-radius: 8px; padding: 9px 12px; color: var(--text-primary); background: rgba(255,255,255,.04); outline: none; font: inherit; font-size: 12.5px; }
+.text-input:focus { border-color: var(--border-gold-light); }
+.browser-settings { margin: 4px 0 6px; padding: 7px 0; border-top: 1px solid var(--border-default); border-bottom: 1px solid var(--border-default); }
+.browser-setting-row { min-height: 42px; display: grid; grid-template-columns: auto minmax(150px, 1fr); align-items: center; gap: 12px; color: var(--text-secondary); }
+.browser-select { min-height: 34px; padding: 6px 30px 6px 10px; color-scheme: dark; }
+html[data-theme="light"] .browser-select { color-scheme: light; }
+.course-header { display: grid; grid-template-columns: auto auto minmax(180px, 260px); gap: 12px; align-items: center; margin-bottom: 8px; }
+.course-header .section-title { margin-bottom: 0; }
+.course-search { min-height: 34px; }
+.content-switch { display: inline-flex; padding: 3px; border: 1px solid var(--border-default); border-radius: 8px; background: rgba(255,255,255,.035); justify-self: start; }
+.content-tab { min-height: 28px; padding: 0 12px; border: 0; border-radius: 6px; color: var(--text-muted); background: transparent; cursor: pointer; font: inherit; font-size: 12px; }
+.content-tab.active { color: var(--accent-gold); background: rgba(244,210,138,.12); }
+.course-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-height: clamp(320px, 36vh, 400px); overflow-y: auto; padding-right: 6px; padding-bottom: 2px; margin-bottom: 18px; align-content: start; scrollbar-gutter: stable; }
+.course-card { width: 100%; min-height: 64px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-default); background: rgba(255,255,255,.03); color: inherit; cursor: pointer; font: inherit; text-align: left; }
+.course-card:focus-visible { outline: 2px solid var(--border-gold-light); outline-offset: 1px; }
+.course-enter { float: right; width: 24px; height: 24px; display: grid; place-items: center; color: var(--text-muted); font-size: 20px; line-height: 1; }
+.course-card:hover .course-enter { color: var(--accent-gold); }
+.course-name { color: var(--text-secondary); line-height: 1.4; margin-right: 28px; }
+.course-meta { color: var(--text-muted); font-size: 10.5px; margin-top: 5px; }
+.course-detail-header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; min-height: 62px; padding-bottom: 16px; margin-bottom: 18px; border-bottom: 1px solid var(--border-default); }
+.course-back-btn { white-space: nowrap; }
+.course-current-label { color: var(--text-muted); font-size: 10.5px; margin-bottom: 4px; }
+.course-current-name { color: var(--text-primary); font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.course-content-badge { padding: 6px 10px; border: 1px solid var(--border-gold-light); border-radius: 8px; color: var(--accent-gold); background: rgba(244,210,138,.07); font-size: 11px; white-space: nowrap; }
+.empty-state { padding: 22px 14px; border: 1px dashed var(--border-default); border-radius: 10px; color: var(--text-muted); text-align: center; line-height: 1.7; }
+.view { display: none; }
+.view.active { display: block; }
+.hidden { display: none !important; }
+#backend-status {
+  position: fixed;
+  z-index: 21;
+  right: 32px;
+  bottom: 24px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-panel);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+body.api-ready #backend-status {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity .25s ease, transform .25s ease;
+}
+#toast { position: fixed; z-index: 20; top: 26px; left: 50%; transform: translateX(-50%) translateY(-8px); display: flex; align-items: center; gap: 8px; opacity: 0; pointer-events: none; padding: 10px 18px; border-radius: 10px; border: 1px solid var(--border-default); background: var(--bg-panel); color: var(--text-primary); backdrop-filter: blur(20px); transition: opacity .25s, transform .25s; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted, #8a8a90);
+  transition: color .2s ease, opacity .2s ease;
+  opacity: 0;
+}
+.save-status.show { opacity: 1; }
+.save-status::before {
+  content: '';
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--text-muted, #8a8a90);
+  transition: background .2s ease;
+}
+.save-status-saving { color: var(--text-primary, #f1f1f1); }
+.save-status-saving::before { background: #f5a524; animation: savePulse 1s ease-in-out infinite; }
+.save-status-saved { color: #5cd09a; }
+.save-status-saved::before { background: #5cd09a; }
+.save-status-error { color: #ee4046; }
+.save-status-error::before { background: #ee4046; }
+@keyframes savePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .35; }
+}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 99px; }
+@media (max-width: 920px) {
+  .app { padding: 22px 18px 44px; }
+  .topbar { align-items: flex-start; gap: 14px; flex-direction: column; }
+  .grid, .course-grid { grid-template-columns: 1fr; }
+  .course-header { grid-template-columns: 1fr; }
+  .course-grid { max-height: 360px; }
+  .course-detail-header { grid-template-columns: auto minmax(0, 1fr); }
+  .course-content-badge { grid-column: 2; justify-self: start; }
+}
+@media (max-width: 620px) {
+  .wide-stat-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body class="api-loading settings-loading">
+  <div class="desktop-titlebar">
+    <div class="desktop-titlebar-drag pywebview-drag-region" ondblclick="desktopToggleMaximize()">
+      <img src="logo.png" alt=""><span>超星作业抓取助手</span>
+    </div>
+    <div class="desktop-window-controls">
+      <button class="desktop-window-button" type="button" title="最小化" onmousedown="event.stopPropagation()" onclick="desktopMinimize()">−</button>
+      <button class="desktop-window-button" id="desktop-maximize" type="button" title="最大化" onmousedown="event.stopPropagation()" onclick="desktopToggleMaximize()">□</button>
+      <button class="desktop-window-button close" type="button" title="关闭" onmousedown="event.stopPropagation()" onclick="desktopClose()">×</button>
+    </div>
+  </div>
+  <div id="boot-mask"><div class="boot-loader"><img src="logo.png" alt=""></div></div>
+<div id="boot-retry-bar"><span id="boot-retry-text">桌面后端响应较慢，</span><button id="boot-retry-btn" type="button">重新检测</button></div>
+<div class="stage-bg"></div>
+<div id="toast"><span class="toast-dot"></span><span id="toast-text"></span></div>
+<div id="backend-status"><span class="toast-dot"></span><span id="backend-status-text">正在连接桌面后端...</span></div>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <img class="brand-mark" src="logo.png" alt="">
+      <div><div class="brand-name">超星作业抓取助手</div><div class="brand-sub">CHAOXING EXTRACTOR</div></div>
+    </div>
+    <div class="top-actions">
+      <div class="mode-switch">
+        <div class="mode-tab active" onclick="switchMode('local')" id="tab-local"><span class="dot"></span>本地模式</div>
+        <div class="mode-tab" onclick="switchMode('online')" id="tab-online"><span class="dot"></span>在线模式</div>
+      </div>
+      <div class="theme-toggle" onclick="toggleTheme()" title="切换主题"><span id="theme-icon">🌙</span></div>
+    </div>
+  </div>
+
+  <div class="view active" id="view-local">
+    <div class="grid">
+      <div class="glass-panel panel-pad">
+        <div class="section-title"><span class="icon-badge">📁</span>本地文件夹</div>
+        <div class="section-desc">处理结果保存在所选目录内的「产出文件」子目录</div>
+        <div class="folder-picker api-gated" onclick="chooseLocalFolder()">
+          <div class="folder-icon">📂</div>
+          <div><div class="folder-path" id="local-folder-path">尚未选择文件夹</div><div class="folder-hint" id="local-folder-hint">等待扫描 .mhtml 文件</div></div>
+        </div>
+        <div class="section-title" style="margin-top:22px;"><span class="icon-badge">📄</span>文件列表</div>
+        <div class="file-list" id="local-file-list"><div class="empty-state">选择文件夹后显示文件</div></div>
+        <div class="progress-row"><div class="progress-track"><div class="progress-fill" id="local-progress-fill"></div></div><div class="progress-label" id="local-progress-label">0%</div></div>
+        <div class="btn-row"><button class="btn btn-gold api-gated" id="local-start-btn" onclick="startLocalProcess()">开始处理</button><button class="btn api-gated" onclick="chooseLocalFolder()">重新选择</button></div>
+      </div>
+      <div class="stat-card">
+        <div class="glass-panel-plain panel-pad">
+          <div class="section-title" style="margin-bottom:14px;"><span class="icon-badge">📊</span>处理统计</div>
+          <div class="stat-grid">
+            <div class="stat-box"><div class="stat-num gold" id="local-stat-work">0</div><div class="stat-label">已解析作业</div></div>
+            <div class="stat-box"><div class="stat-num" id="local-stat-question">0</div><div class="stat-label">题目总数</div></div>
+            <div class="stat-box"><div class="stat-num teal" id="local-stat-correct">0</div><div class="stat-label">答对题数</div></div>
+            <div class="stat-box"><div class="stat-num" id="local-stat-score">0</div><div class="stat-label">总得分</div></div>
+          </div>
+        </div>
+        <div class="glass-panel-plain panel-pad">
+          <div class="section-title"><span class="icon-badge">⚙️</span>导出选项</div>
+          <div class="divider"></div>
+          <div class="opt-row">下载并嵌入图片 <div id="local-with-images" class="toggle on" onclick="toggleOption('local-with-images')"></div></div>
+          <div class="opt-row">标注课程/班级信息 <div id="local-course-info" class="toggle" onclick="toggleOption('local-course-info')"></div></div>
+          <div class="divider"></div>
+          <div class="input-group"><label class="input-label">课程名称</label><input class="text-input" id="local-course-name" type="text" placeholder="可选"></div>
+          <div class="input-group"><label class="input-label">班级</label><input class="text-input" id="local-class-name" type="text" placeholder="可选"></div>
+          <div class="input-group"><label class="input-label">姓名</label><input class="text-input" id="local-student-name" type="text" placeholder="可选"></div>
+          <div class="inline-note">产出位置：<br><span class="mono-path" id="local-output-path">尚未选择</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="view" id="view-online">
+    <div class="grid">
+      <div class="primary-column">
+        <div class="glass-panel panel-pad">
+          <div id="course-browser-view">
+            <div class="course-header">
+              <div class="section-title"><span class="icon-badge">🎓</span>课程列表</div>
+              <div class="content-switch" aria-label="抓取内容">
+                <button class="content-tab active" id="content-homework" type="button" onclick="switchOnlineContentMode('homework')">作业</button>
+                <button class="content-tab" id="content-chapter" type="button" onclick="switchOnlineContentMode('chapter')">章节练习</button>
+              </div>
+              <input class="text-input course-search" id="course-search" type="search" placeholder="搜索课程" oninput="updateCourseSearch(this.value)">
+            </div>
+            <div class="section-desc" id="online-course-desc">登录后显示课程</div>
+            <div class="course-grid" id="course-grid"><div class="empty-state" style="grid-column:1/-1;">尚未登录</div></div>
+          </div>
+          <div id="course-detail-view" class="hidden">
+            <div class="course-detail-header">
+              <button class="btn course-back-btn" id="course-back-btn" type="button" onclick="backToCourseList()" title="返回课程列表">← 返回</button>
+              <div>
+                <div class="course-current-label">当前课程</div>
+                <div class="course-current-name" id="current-course-name">未选择课程</div>
+              </div>
+              <div class="course-content-badge" id="current-content-badge">作业</div>
+            </div>
+            <div class="section-title" id="task-title"><span class="icon-badge">📋</span>作业列表</div>
+            <div class="file-list" id="online-task-list" style="max-height:320px;"><div class="empty-state">正在读取作业...</div></div>
+            <div class="progress-row"><div class="progress-track"><div class="progress-fill" id="online-progress-fill"></div></div><div class="progress-label" id="online-progress-label">0%</div></div>
+            <div class="btn-row"><button class="btn btn-gold api-gated" id="online-start-btn" onclick="startOnlineCapture()">开始抓取当前课程</button><button class="btn api-gated" onclick="chooseOutputRoot()">保存位置</button></div>
+          </div>
+        </div>
+        <div class="glass-panel-plain panel-pad">
+          <div class="section-title" style="margin-bottom:14px;"><span class="icon-badge">📊</span>抓取统计</div>
+          <div class="stat-grid wide-stat-grid">
+            <div class="stat-box"><div class="stat-num gold" id="online-stat-work">0</div><div class="stat-label" id="online-stat-work-label">已解析作业</div></div>
+            <div class="stat-box"><div class="stat-num" id="online-stat-question">0</div><div class="stat-label">题目总数</div></div>
+            <div class="stat-box"><div class="stat-num teal" id="online-stat-correct">0</div><div class="stat-label">答对题数</div></div>
+            <div class="stat-box"><div class="stat-num" id="online-stat-score">0</div><div class="stat-label">总得分</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="glass-panel-plain panel-pad">
+          <div class="section-title" style="margin-bottom:14px;"><span class="icon-badge">🔐</span>账号登录</div>
+          <div class="input-group"><label class="input-label">手机号 / 学号</label><input class="text-input" id="online-username" type="text" autocomplete="username"></div>
+          <div class="input-group"><label class="input-label">密码</label><input class="text-input" id="online-password" type="password" autocomplete="current-password"></div>
+          <div class="browser-settings">
+            <label class="browser-setting-row" for="online-browser-choice"><span>打开方式</span><select class="text-input browser-select api-gated" id="online-browser-choice" onchange="changeOnlineBrowserChoice()"><option value="auto">正在检测浏览器...</option></select></label>
+            <div class="opt-row">始终显示浏览器 <div id="online-browser-visible" class="toggle" onclick="toggleBrowserVisibility()" title="关闭时，登录成功后在后台隐藏浏览器"></div></div>
+          </div>
+          <div class="opt-row">记住账号和密码 <div id="remember-login" class="toggle" onclick="toggleOption('remember-login')"></div></div>
+          <div class="opt-row save-status-row" style="justify-content: space-between;">记忆同步 <span id="save-status" class="save-status">已同步</span></div>
+          <div class="btn-row"><button class="btn btn-gold api-gated" onclick="onlineLogin()" id="online-login-btn">登录并读取课程</button><button class="btn hidden api-gated" onclick="onlineContinue()" id="online-continue-btn">我已完成</button></div>
+          <div class="inline-note" id="online-login-status">未登录</div>
+        </div>
+        <div class="glass-panel-plain panel-pad">
+          <div class="section-title"><span class="icon-badge">📦</span>抓取选项</div>
+          <div class="divider"></div>
+          <div class="opt-row">下载并嵌入图片 <div id="online-with-images" class="toggle on" onclick="toggleOption('online-with-images')"></div></div>
+          <div class="opt-row">断点续传 <div id="online-resume" class="toggle on" onclick="toggleOption('online-resume')"></div></div>
+          <div class="inline-note">产出位置：<br><span class="mono-path" id="online-output-root">默认：程序目录</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var localFolder = '';
+var onlineOutputRoot = '';
+var onlineOutputCustom = false;
+var onlineBrowserChoice = 'auto';
+var courses = [];
+var courseSearch = '';
+var onlineContentMode = window.__chaoxingBoot && window.__chaoxingBoot.contentMode === 'chapter' ? 'chapter' : 'homework';
+var activeMode = window.__chaoxingBoot && window.__chaoxingBoot.mode === 'online' ? 'online' : 'local';
+var activeTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+var credentialActionRequested = 'keep';
+var credentialActionRevision = 0;
+var selectedCourseKeys = new Set();
+var activeCourse = null;
+var courseListLoading = false;
+var onlineCaptureRunning = false;
+var timers = {};
+var browserMonitorTimer = null;
+var browserStatusBusy = false;
+var toastTimer = null;
+var apiReady = false;
+var settingsLoaded = false;
+var settingsLoading = false;
+var desktopMaximized = false;
+
+async function desktopMinimize() {
+  var backend = api();
+  if (backend && backend.window_minimize) await backend.window_minimize();
+}
+async function desktopToggleMaximize() {
+  var backend = api();
+  if (!backend || !backend.window_set_maximized) return;
+  desktopMaximized = !desktopMaximized;
+  await backend.window_set_maximized(desktopMaximized);
+  var button = document.getElementById('desktop-maximize');
+  if (button) {
+    button.textContent = desktopMaximized ? '❐' : '□';
+    button.title = desktopMaximized ? '还原' : '最大化';
+  }
+}
+async function desktopClose() {
+  var backend = api();
+  if (backend && backend.window_close) await backend.window_close();
+}
+
+function api() { return window.pywebview && window.pywebview.api; }
+function getApi() {
+  var backend = api();
+  if (!backend) {
+    showToast('正在连接桌面后端，请稍等');
+    setBackendReady(false, '正在连接桌面后端...');
+    return null;
+  }
+  return backend;
+}
+function callWithTimeout(promise, ms, message) {
+  var timer;
+  var timeout = new Promise(function(_, reject) {
+    timer = setTimeout(function() { reject(new Error(message || '操作超时')); }, ms);
+  });
+  return Promise.race([promise, timeout]).finally(function() { clearTimeout(timer); });
+}
+function setBackendReady(ready, message) {
+  apiReady = ready;
+  document.body.classList.toggle('api-loading', !ready);
+  document.body.classList.toggle('api-ready', ready);
+  document.querySelectorAll('.api-gated').forEach(function(el) {
+    if ('disabled' in el) el.disabled = !ready;
+  });
+  var text = document.getElementById('backend-status-text');
+  if (text) text.textContent = message || (ready ? '桌面后端已连接' : '正在连接桌面后端...');
+  if (ready) {
+    hideBootRetry();
+    if (!settingsLoaded) loadSettings();
+  }
+}
+function revealApp() {
+  document.body.classList.remove('settings-loading');
+}
+var pywebviewPollTimer = null;
+function stopPywebviewPoll() {
+  if (pywebviewPollTimer) {
+    clearInterval(pywebviewPollTimer);
+    clearTimeout(pywebviewPollTimer);
+    pywebviewPollTimer = null;
+  }
+}
+function schedulePywebviewPoll(delay) {
+  if (apiReady || !delay) return;
+  stopPywebviewPoll();
+  pywebviewPollTimer = setTimeout(function() {
+    pywebviewPollTimer = null;
+    if (apiReady) return;
+    if (api()) {
+      setBackendReady(true);
+      notifyBackendConnected();
+      return;
+    }
+    schedulePywebviewPoll(Math.min(delay + 150, 500));
+  }, delay);
+}
+function showBootRetry(reason) {
+  var text = document.getElementById('boot-retry-text');
+  if (text) text.textContent = (reason || '桌面后端响应较慢') + '，';
+  var bar = document.getElementById('boot-retry-bar');
+  if (!bar) return;
+  bar.classList.add('show');
+}
+function hideBootRetry() {
+  var bar = document.getElementById('boot-retry-bar');
+  if (!bar) return;
+  bar.classList.remove('show');
+}
+function waitForPywebview() {
+  setBackendReady(false, '正在连接桌面后端...');
+  var retryBtn = document.getElementById('boot-retry-btn');
+  if (retryBtn && !retryBtn.dataset.bound) {
+    retryBtn.dataset.bound = '1';
+    retryBtn.addEventListener('click', function() {
+      if (apiReady) return;
+      if (api()) {
+        setBackendReady(true);
+        notifyBackendConnected();
+        return;
+      }
+      showToast('后端尚未就绪，正在重试...');
+      schedulePywebviewPoll(80);
+    });
+  }
+  if (api()) {
+    setBackendReady(true);
+    return;
+  }
+  schedulePywebviewPoll(80);
+  setTimeout(function() {
+    if (!apiReady) {
+      showBootRetry('桌面后端响应较慢');
+    }
+  }, 8000);
+}
+var lastBackendToastAt = 0;
+function notifyBackendConnected() {
+  var now = Date.now();
+  if (now - lastBackendToastAt < 1500) return;
+  lastBackendToastAt = now;
+  showToast('桌面后端已连接');
+}
+window.addEventListener('pywebviewready', function() {
+  if (api()) {
+    setBackendReady(true);
+    notifyBackendConnected();
+  } else {
+    // Polling fallback will pick it up
+    schedulePywebviewPoll(50);
+  }
+});
+document.addEventListener('DOMContentLoaded', waitForPywebview);
+document.addEventListener('DOMContentLoaded', function() {
+  [
+    'online-username',
+    'online-password',
+    'local-course-name',
+    'local-class-name',
+    'local-student-name'
+  ].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', function() {
+        if ((id === 'online-username' || id === 'online-password') && isOn('remember-login')) {
+          requestCredentialAction('save');
+        }
+        persistSettingsDebounced();
+      });
+      el.addEventListener('change', flushSettings);
+    }
+  });
+});
+window.addEventListener('beforeunload', function() {
+  stopBrowserMonitor();
+  persistBootState();
+  flushSettings();
+});
+function escapeHtml(value) {
+  return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function switchMode(mode) {
+  mode = mode === 'online' ? 'online' : 'local';
+  activeMode = mode;
+  document.getElementById('tab-local').classList.toggle('active', mode === 'local');
+  document.getElementById('tab-online').classList.toggle('active', mode === 'online');
+  document.getElementById('view-local').classList.toggle('active', mode === 'local');
+  document.getElementById('view-online').classList.toggle('active', mode === 'online');
+  persistBootState();
+  flushSettings();
+}
+function setTheme(theme, notify) {
+  activeTheme = theme === 'light' ? 'light' : 'dark';
+  var html = document.documentElement;
+  var icon = document.getElementById('theme-icon');
+  html.setAttribute('data-theme', activeTheme);
+  icon.textContent = activeTheme === 'dark' ? '🌙' : '☀️';
+  persistBootState();
+  if (notify) showToast(activeTheme === 'dark' ? '已切换至深色主题' : '已切换至浅色主题');
+}
+function persistBootState() {
+  try {
+    localStorage.setItem('chaoxing-extractor-ui', JSON.stringify({mode: activeMode, theme: activeTheme, contentMode: onlineContentMode}));
+  } catch (e) { /* backend settings remain authoritative */ }
+}
+function toggleTheme() {
+  setTheme(activeTheme === 'dark' ? 'light' : 'dark', true);
+  flushSettings();
+}
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  document.getElementById('toast-text').textContent = msg;
+  t.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { t.classList.remove('show'); }, 2200);
+}
+function setToggle(id, on) { document.getElementById(id).classList.toggle('on', !!on); }
+function requestCredentialAction(action) {
+  credentialActionRequested = action === 'save' || action === 'clear' ? action : 'keep';
+  credentialActionRevision += 1;
+}
+function toggleOption(id) {
+  document.getElementById(id).classList.toggle('on');
+  if (id === 'remember-login') requestCredentialAction(isOn(id) ? 'save' : 'clear');
+  flushSettings();
+}
+function isOn(id) { return document.getElementById(id).classList.contains('on'); }
+async function loadBrowserChoices(savedChoice) {
+  var select = document.getElementById('online-browser-choice');
+  if (!select) return;
+  var backend = api();
+  var choices = [];
+  if (backend && backend.online_browser_choices) {
+    try {
+      var res = await callWithTimeout(backend.online_browser_choices(), 2500, '检测浏览器超时');
+      if (res && res.ok) choices = res.choices || [];
+    } catch (e) { /* keep automatic fallback */ }
+  }
+  select.innerHTML = '';
+  var automatic = document.createElement('option');
+  automatic.value = 'auto';
+  automatic.textContent = choices.length ? '自动选择（推荐）' : '自动选择（未检测到浏览器）';
+  select.appendChild(automatic);
+  choices.forEach(function(choice) {
+    var option = document.createElement('option');
+    option.value = choice.id;
+    option.textContent = choice.name;
+    option.title = choice.path || '';
+    select.appendChild(option);
+  });
+  var requested = String(savedChoice || 'auto');
+  var available = Array.from(select.options).some(function(option) { return option.value === requested; });
+  select.value = available ? requested : 'auto';
+  onlineBrowserChoice = select.value;
+  select.title = select.selectedOptions[0] ? (select.selectedOptions[0].title || select.selectedOptions[0].textContent) : '';
+}
+async function changeOnlineBrowserChoice() {
+  var select = document.getElementById('online-browser-choice');
+  onlineBrowserChoice = select ? (select.value || 'auto') : 'auto';
+  if (select && select.selectedOptions[0]) select.title = select.selectedOptions[0].title || select.selectedOptions[0].textContent;
+  await flushSettings();
+  showToast('浏览器选择已保存，下次登录生效');
+}
+async function toggleBrowserVisibility() {
+  var toggle = document.getElementById('online-browser-visible');
+  toggle.classList.toggle('on');
+  var alwaysVisible = isOn('online-browser-visible');
+  await flushSettings();
+  var backend = api();
+  if (!backend || !backend.online_set_browser_visibility) return;
+  try {
+    var res = await backend.online_set_browser_visibility(alwaysVisible);
+    if (res && res.busy) return showToast(res.message || '当前操作完成后生效');
+    if (res && res.alive && res.visible && !alwaysVisible) return showToast('验证期间浏览器保持显示');
+    showToast(alwaysVisible ? '浏览器将始终显示' : '登录后自动隐藏浏览器');
+  } catch (e) {
+    showToast('浏览器显示设置已保存');
+  }
+}
+function collectSettings() {
+  return {
+    active_mode: activeMode,
+    theme: activeTheme,
+    online_content_mode: onlineContentMode,
+    credential_action: credentialActionRequested,
+    local_folder: localFolder || '',
+    local_with_images: isOn('local-with-images'),
+    local_course_info: isOn('local-course-info'),
+    local_course_name: document.getElementById('local-course-name').value || '',
+    local_class_name: document.getElementById('local-class-name').value || '',
+    local_student_name: document.getElementById('local-student-name').value || '',
+    online_with_images: isOn('online-with-images'),
+    online_resume: isOn('online-resume'),
+    online_browser_choice: onlineBrowserChoice || 'auto',
+    online_browser_visible: isOn('online-browser-visible'),
+    online_output_root: onlineOutputRoot || '',
+    online_output_custom: onlineOutputCustom
+  };
+}
+var settingsSaveTimer = null;
+function persistSettingsDebounced() {
+  if (!settingsLoaded) return;
+  if (settingsSaveTimer) clearTimeout(settingsSaveTimer);
+  settingsSaveTimer = setTimeout(saveCurrentSettings, 350);
+}
+function flushSettings() {
+  if (!settingsLoaded) return Promise.resolve(null);
+  if (settingsSaveTimer) {
+    clearTimeout(settingsSaveTimer);
+    settingsSaveTimer = null;
+  }
+  return saveCurrentSettings();
+}
+var saveStatusHideTimer = null;
+var saveLastOk = true;
+var saveRetryDelay = 600;
+var settingsSaveChain = Promise.resolve();
+var settingsSaveSequence = 0;
+function setSaveStatus(state, text) {
+  var el = document.getElementById('save-status');
+  if (!el) return;
+  el.className = 'save-status save-status-' + state;
+  if (typeof text === 'string') el.textContent = text;
+  if (saveStatusHideTimer) {
+    clearTimeout(saveStatusHideTimer);
+    saveStatusHideTimer = null;
+  }
+  if (state === 'saved' || state === 'error') {
+    saveStatusHideTimer = setTimeout(function() {
+      el.classList.remove('show');
+    }, 2400);
+  }
+}
+function showSaveStatus() {
+  var el = document.getElementById('save-status');
+  if (el) el.classList.add('show');
+}
+function captureSettingsSnapshot() {
+  return {
+    username: document.getElementById('online-username').value.trim(),
+    password: document.getElementById('online-password').value,
+    remember: isOn('remember-login'),
+    preferences: collectSettings(),
+    credentialRevision: credentialActionRevision
+  };
+}
+async function performSettingsSave(snapshot, sequence) {
+  settingsSaveTimer = null;
+  var backend = api();
+  if (!backend) return null;
+  setSaveStatus('saving', '正在保存…');
+  showSaveStatus();
+  var attempt = 0;
+  var lastError = '';
+  while (attempt < 2) {
+    try {
+      var res = await callWithTimeout(
+        backend.save_settings(snapshot.username, snapshot.password, snapshot.remember, snapshot.preferences),
+        4000,
+        '保存设置超时'
+      );
+      if (res && res.ok) {
+        if (snapshot.credentialRevision === credentialActionRevision) {
+          credentialActionRequested = 'keep';
+        }
+        saveLastOk = true;
+        setSaveStatus('saved', '已同步 ' + formatSaveTime(res.saved_at));
+        return res;
+      }
+      lastError = (res && res.error) || '保存设置失败';
+    } catch (err) {
+      lastError = (err && err.message) || '保存设置失败';
+    }
+    attempt += 1;
+    if (attempt < 2) {
+      await new Promise(function(r) { setTimeout(r, saveRetryDelay); });
+    }
+  }
+  saveLastOk = false;
+  setSaveStatus('error', lastError);
+  showToast(lastError);
+  return {ok: false, error: lastError, sequence: sequence};
+}
+function saveCurrentSettings() {
+  settingsSaveTimer = null;
+  if (!settingsLoaded || !api()) return Promise.resolve(null);
+  var snapshot = captureSettingsSnapshot();
+  var sequence = ++settingsSaveSequence;
+  settingsSaveChain = settingsSaveChain
+    .catch(function() { return null; })
+    .then(function() { return performSettingsSave(snapshot, sequence); });
+  return settingsSaveChain;
+}
+function formatSaveTime(ms) {
+  if (!ms) return '';
+  try {
+    var d = new Date(ms);
+    var pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+    return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  } catch (e) { return ''; }
+}
+function applyLocalScan(res) {
+  localFolder = res.folder || '';
+  document.getElementById('local-folder-path').textContent = res.folder || '尚未选择文件夹';
+  document.getElementById('local-folder-hint').textContent = '共找到 ' + (res.count || 0) + ' 个 .mhtml 文件';
+  document.getElementById('local-output-path').textContent = res.output_dir || '尚未选择';
+  renderFiles('local-file-list', res.files || []);
+  setStats('local', {});
+  setProgress('local', 0, '0%');
+}
+async function restoreLocalFolder(folder) {
+  if (!folder) return;
+  localFolder = folder;
+  document.getElementById('local-folder-path').textContent = folder;
+  document.getElementById('local-folder-hint').textContent = '正在恢复上次选择...';
+  var backend = api();
+  if (!backend) return;
+  try {
+    var res = await backend.scan_local_folder(folder);
+    if (res.ok) {
+      applyLocalScan(res);
+    } else {
+      localFolder = '';
+      document.getElementById('local-folder-hint').textContent = '上次文件夹不可用，请重新选择';
+      document.getElementById('local-file-list').innerHTML = '<div class="empty-state">' + escapeHtml(res.error || '无法读取上次文件夹') + '</div>';
+    }
+  } catch (err) {
+    localFolder = '';
+    document.getElementById('local-folder-hint').textContent = '恢复失败，请重新选择';
+  }
+}
+async function loadSettings(attempt) {
+  attempt = Number(attempt || 0);
+  var backend = api();
+  if (!backend || settingsLoaded || settingsLoading) return;
+  settingsLoading = true;
+  var loaded = false;
+  try {
+    var res = await callWithTimeout(backend.get_settings(), 2500, '读取账号设置超时');
+    if (!res || !res.ok) throw new Error((res && res.error) || '读取账号设置失败');
+    var settings = res.settings || {};
+    document.getElementById('online-username').value = settings.username || '';
+    document.getElementById('online-password').value = settings.password || '';
+    setToggle('remember-login', settings.remember !== false);
+    credentialActionRequested = 'keep';
+    credentialActionRevision += 1;
+    setToggle('local-with-images', settings.local_with_images !== false);
+    setToggle('local-course-info', !!settings.local_course_info);
+    setToggle('online-with-images', settings.online_with_images !== false);
+    setToggle('online-resume', settings.online_resume !== false);
+    setToggle('online-browser-visible', !!settings.online_browser_visible);
+    await loadBrowserChoices(settings.online_browser_choice || 'auto');
+    document.getElementById('local-course-name').value = settings.local_course_name || '';
+    document.getElementById('local-class-name').value = settings.local_class_name || '';
+    document.getElementById('local-student-name').value = settings.local_student_name || '';
+    setTheme(settings.theme === 'light' ? 'light' : 'dark', false);
+    switchOnlineContentMode(settings.online_content_mode === 'chapter' ? 'chapter' : 'homework', false);
+    switchMode(settings.active_mode === 'online' ? 'online' : 'local');
+    onlineOutputRoot = settings.online_output_root || settings.default_output_root || '';
+    onlineOutputCustom = !!settings.online_output_custom;
+    document.getElementById('online-output-root').textContent = onlineOutputRoot || '默认：程序目录';
+    restoreLocalFolder(settings.local_folder || '');
+    loaded = true;
+  } catch (err) {
+    if (attempt >= 10) showToast((err && err.message) || '读取设置失败');
+  } finally {
+    settingsLoading = false;
+  }
+  if (!loaded) {
+    if (attempt < 10) {
+      setTimeout(function() { loadSettings(attempt + 1); }, Math.min(180 + attempt * 120, 900));
+    }
+    return;
+  }
+  settingsLoaded = true;
+  backend = api();
+  if (backend && backend.save_state) {
+    try {
+      var state = await backend.save_state();
+      if (state && state.modified_at) {
+        setSaveStatus('saved', '已同步 ' + formatSaveTime(state.modified_at));
+      } else {
+        setSaveStatus('saved', '已同步');
+      }
+      showSaveStatus();
+    } catch (e) { /* ignore */ }
+  }
+  if (backend && backend.startup_ready) {
+    try {
+      await backend.startup_ready();
+    } catch (e) { /* settings API already scheduled the native unlock */ }
+  }
+  revealApp();
+}
+async function saveLoginSettings(username, password) {
+  requestCredentialAction(isOn('remember-login') ? 'save' : 'clear');
+  return flushSettings();
+}
+function statusGlyph(status) {
+  if (status === 'ok') return '✓';
+  if (status === 'processing') return '↻';
+  if (status === 'failed') return '×';
+  return '·';
+}
+function renderFiles(containerId, files) {
+  var el = document.getElementById(containerId);
+  if (!files || !files.length) { el.innerHTML = '<div class="empty-state">没有文件</div>'; return; }
+  el.innerHTML = files.map(function(file) {
+    var status = file.status || 'pending';
+    return '<div class="file-row"><div class="file-status ' + status + '">' + statusGlyph(status) + '</div><div class="file-name">' + escapeHtml(file.name || file.title || '') + '</div><div class="file-meta">' + escapeHtml(file.meta || file.status || '') + '</div></div>';
+  }).join('');
+}
+function setStats(prefix, stats) {
+  stats = stats || {};
+  document.getElementById(prefix + '-stat-work').textContent = stats.work_count || 0;
+  document.getElementById(prefix + '-stat-question').textContent = stats.question_count || 0;
+  document.getElementById(prefix + '-stat-correct').textContent = stats.correct_count || 0;
+  document.getElementById(prefix + '-stat-score').textContent = stats.total_score || 0;
+}
+function setProgress(prefix, percent, label) {
+  percent = Math.max(0, Math.min(100, Number(percent || 0)));
+  document.getElementById(prefix + '-progress-fill').style.width = percent + '%';
+  document.getElementById(prefix + '-progress-label').textContent = label || (Math.round(percent) + '%');
+}
+async function chooseLocalFolder() {
+  var backend = getApi();
+  if (!backend) return;
+  var res;
+  try {
+    res = await backend.choose_folder();
+  } catch (err) {
+    return showToast((err && err.message) || '选择失败');
+  }
+  if (res.cancelled) return;
+  if (!res.ok) return showToast(res.error || '选择失败');
+  applyLocalScan(res);
+  await saveCurrentSettings();
+}
+async function startLocalProcess() {
+  var backend = getApi();
+  if (!backend) return;
+  if (!localFolder) return showToast('请先选择文件夹');
+  await saveCurrentSettings();
+  var btn = document.getElementById('local-start-btn');
+  btn.disabled = true;
+  var options = {
+    with_images: isOn('local-with-images'),
+    course_name: isOn('local-course-info') ? document.getElementById('local-course-name').value : '',
+    class_name: isOn('local-course-info') ? document.getElementById('local-class-name').value : '',
+    student_name: isOn('local-course-info') ? document.getElementById('local-student-name').value : ''
+  };
+  var res = await backend.start_local_processing(localFolder, options);
+  if (!res.ok) { btn.disabled = false; return showToast(res.error || '启动失败'); }
+  watchJob(res.job_id, 'local', function() { btn.disabled = false; });
+}
+function watchJob(jobId, prefix, done) {
+  if (timers[prefix]) clearInterval(timers[prefix]);
+  timers[prefix] = setInterval(async function() {
+    var backend = api();
+    if (!backend) return;
+    var res = await backend.get_job(jobId);
+    if (!res.ok) { clearInterval(timers[prefix]); if (done) done(); return showToast(res.error || '任务状态丢失'); }
+    var job = res.job;
+    if (prefix === 'local') renderFiles('local-file-list', job.files || []);
+    setStats(prefix, job.stats);
+    setProgress(prefix, job.progress, job.message || '');
+    if (job.state === 'done' || job.state === 'failed' || job.state === 'verification_required') {
+      clearInterval(timers[prefix]);
+      if (done) done();
+      if (prefix === 'online' && job.state === 'failed' && job.browser_closed) {
+        handleBrowserClosed(job.message);
+      }
+      if (prefix === 'online' && job.state === 'verification_required') {
+        document.getElementById('online-continue-btn').classList.remove('hidden');
+        document.getElementById('online-login-status').textContent = job.message || '需要完成浏览器验证';
+      }
+      showToast(job.message || (job.state === 'done' ? '已完成' : '任务失败'));
+      if (prefix === 'local' && job.outputs && job.outputs.folder) document.getElementById('local-output-path').textContent = job.outputs.folder;
+      if (prefix === 'online' && job.outputs && job.outputs.folder) document.getElementById('online-output-root').textContent = job.outputs.folder;
+    }
+  }, prefix === 'login' || prefix === 'tasks' ? 1200 : 700);
+}
+async function onlineLogin() {
+  var backend = getApi();
+  if (!backend) return;
+  var username = document.getElementById('online-username').value.trim();
+  var password = document.getElementById('online-password').value;
+  if (!username || !password) return showToast('请输入账号和密码');
+  var loginBtn = document.getElementById('online-login-btn');
+  loginBtn.disabled = true;
+  stopBrowserMonitor();
+  await saveLoginSettings(username, password);
+  document.getElementById('online-login-status').textContent = '正在登录...';
+  var res;
+  try {
+    res = await callWithTimeout(
+      backend.online_login(
+        username,
+        password,
+        isOn('remember-login'),
+        onlineBrowserChoice || 'auto',
+        isOn('online-browser-visible')
+      ),
+      10000,
+      '启动登录超时，请重试'
+    );
+  } catch (err) {
+    loginBtn.disabled = false;
+    return handleLoginResult({ok: false, error: err.message || '登录失败'});
+  }
+  if (!res.ok) loginBtn.disabled = false;
+  if (!res.ok) return handleLoginResult(res);
+  if (res.job_id) return watchLoginJob(res.job_id);
+  handleLoginResult(res);
+}
+async function onlineContinue() {
+  var backend = getApi();
+  if (!backend) return;
+  document.getElementById('online-login-status').textContent = '正在确认登录状态...';
+  var res = await backend.online_continue_after_verification();
+  if (!res.ok) return handleLoginResult(res);
+  if (res.job_id) return watchLoginJob(res.job_id);
+  handleLoginResult(res);
+}
+function watchLoginJob(jobId) {
+  var key = 'login';
+  if (timers[key]) clearInterval(timers[key]);
+  timers[key] = setInterval(async function() {
+    var backend = api();
+    if (!backend) return;
+    var res = await backend.get_job(jobId);
+    if (!res.ok) {
+      clearInterval(timers[key]);
+      return handleLoginResult(res);
+    }
+    var job = res.job;
+    document.getElementById('online-login-status').textContent = job.message || '正在登录...';
+    if (job.state === 'verification_required') {
+      clearInterval(timers[key]);
+      document.getElementById('online-continue-btn').classList.remove('hidden');
+      showToast(job.message || '需要验证码');
+    } else if (job.state === 'done') {
+      clearInterval(timers[key]);
+      handleLoginResult({ok: true, status: 'logged_in', message: job.message, courses: job.courses || []});
+    } else if (job.state === 'failed') {
+      clearInterval(timers[key]);
+      handleLoginResult({ok: false, error: job.message || '登录失败', browser_closed: !!job.browser_closed});
+    }
+  }, 1200);
+}
+function stopBrowserMonitor() {
+  if (browserMonitorTimer) {
+    clearInterval(browserMonitorTimer);
+    browserMonitorTimer = null;
+  }
+  browserStatusBusy = false;
+}
+function handleBrowserClosed(message) {
+  stopBrowserMonitor();
+  var text = message || '浏览器已关闭，请重新点击登录';
+  document.getElementById('online-login-btn').disabled = false;
+  document.getElementById('online-continue-btn').classList.add('hidden');
+  document.getElementById('online-login-status').textContent = text;
+  courses = [];
+  resetCourseNavigation(true);
+  renderCourses();
+}
+function startBrowserMonitor() {
+  stopBrowserMonitor();
+  browserMonitorTimer = setInterval(async function() {
+    if (browserStatusBusy) return;
+    var backend = api();
+    if (!backend || !backend.online_browser_status) return;
+    browserStatusBusy = true;
+    try {
+      var status = await callWithTimeout(backend.online_browser_status(), 4000, '');
+      if (status && status.ok && status.alive === false) {
+        handleBrowserClosed(status.message);
+      }
+    } catch (e) {
+      // A temporary bridge delay is not proof that Chrome was closed.
+    } finally {
+      browserStatusBusy = false;
+    }
+  }, 3000);
+}
+function handleLoginResult(res) {
+  document.getElementById('online-login-btn').disabled = false;
+  if (!res.ok) {
+    if (res.browser_closed) handleBrowserClosed(res.error);
+    else document.getElementById('online-login-status').textContent = res.error || '登录失败';
+    return showToast(res.error || '登录失败');
+  }
+  document.getElementById('online-login-status').textContent = res.message || '';
+  document.getElementById('online-continue-btn').classList.toggle('hidden', res.status !== 'verification_required');
+  if (res.courses) {
+    courses = res.courses;
+    resetCourseNavigation(true);
+    renderCourses();
+    startBrowserMonitor();
+    showToast('已读取课程列表');
+  }
+}
+function courseKey(course) { return [course.course_id || '', course.clazz_id || '', course.cpi || ''].join('|'); }
+function updateCourseDetailControls() {
+  var busy = courseListLoading || onlineCaptureRunning;
+  var backBtn = document.getElementById('course-back-btn');
+  var startBtn = document.getElementById('online-start-btn');
+  if (backBtn) {
+    backBtn.disabled = busy;
+    backBtn.title = busy ? '当前任务完成后才能返回' : '返回课程列表';
+  }
+  if (startBtn) startBtn.disabled = busy || !activeCourse;
+}
+function resetCourseNavigation(showBrowser) {
+  activeCourse = null;
+  courseListLoading = false;
+  onlineCaptureRunning = false;
+  selectedCourseKeys.clear();
+  if (timers.tasks) {
+    clearInterval(timers.tasks);
+    delete timers.tasks;
+  }
+  var browserView = document.getElementById('course-browser-view');
+  var detailView = document.getElementById('course-detail-view');
+  if (browserView) browserView.classList.toggle('hidden', showBrowser === false);
+  if (detailView) detailView.classList.toggle('hidden', showBrowser !== false);
+  updateCourseDetailControls();
+}
+function backToCourseList(force) {
+  if (!force && (courseListLoading || onlineCaptureRunning)) {
+    return showToast('当前课程正在处理，请等待完成');
+  }
+  resetCourseNavigation(true);
+  document.getElementById('online-task-list').innerHTML = '<div class="empty-state">选择课程后显示' + onlineContentName() + '</div>';
+  document.getElementById('task-title').innerHTML = '<span class="icon-badge">📋</span>' + onlineContentName() + '列表';
+  renderCourses();
+}
+function updateCourseSearch(value) {
+  courseSearch = String(value || '').trim().toLowerCase();
+  renderCourses();
+}
+function courseSearchText(course) {
+  return [
+    course.name || '',
+    course.task_count || '',
+    course.course_id || '',
+    course.clazz_id || '',
+    course.cpi || ''
+  ].join(' ').toLowerCase();
+}
+function onlineContentName() { return onlineContentMode === 'chapter' ? '章节练习' : '作业'; }
+function switchOnlineContentMode(mode, persist) {
+  if (activeCourse && (courseListLoading || onlineCaptureRunning)) {
+    return showToast('当前课程正在处理，暂时不能切换内容');
+  }
+  if (activeCourse) resetCourseNavigation(true);
+  onlineContentMode = mode === 'chapter' ? 'chapter' : 'homework';
+  document.getElementById('content-homework').classList.toggle('active', onlineContentMode === 'homework');
+  document.getElementById('content-chapter').classList.toggle('active', onlineContentMode === 'chapter');
+  document.getElementById('task-title').innerHTML = '<span class="icon-badge">📋</span>' + onlineContentName() + '列表';
+  document.getElementById('online-task-list').innerHTML = '<div class="empty-state">选择课程后显示' + onlineContentName() + '</div>';
+  document.getElementById('online-stat-work-label').textContent = '已解析' + onlineContentName();
+  setStats('online', {});
+  setProgress('online', 0, '0%');
+  if (timers.tasks) {
+    clearInterval(timers.tasks);
+    delete timers.tasks;
+  }
+  renderCourses();
+  persistBootState();
+  if (persist !== false) flushSettings();
+}
+function renderCourses() {
+  var grid = document.getElementById('course-grid');
+  var filtered = courses.map(function(course, index) {
+    return {course: course, index: index};
+  }).filter(function(item) {
+    return !courseSearch || courseSearchText(item.course).indexOf(courseSearch) >= 0;
+  });
+  document.getElementById('online-course-desc').textContent = courseSearch
+    ? '已找到 ' + filtered.length + ' / ' + courses.length + ' 门课程'
+    : '已找到 ' + courses.length + ' 门课程';
+  if (!courses.length) { grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">没有发现课程</div>'; return; }
+  if (!filtered.length) { grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">没有匹配课程</div>'; return; }
+  grid.innerHTML = filtered.map(function(item) {
+    var course = item.course;
+    var index = item.index;
+    var countKey = onlineContentMode === 'chapter' ? 'chapter_count' : 'homework_count';
+    var count = course[countKey];
+    if (onlineContentMode === 'homework' && count == null && course.task_count != null) count = course.task_count;
+    var meta = count != null ? (count + ' 份' + onlineContentName()) : '点击查看' + onlineContentName();
+    return '<button class="course-card" type="button" onclick="enterCourse(' + index + ')"><span class="course-enter" aria-hidden="true">›</span><div class="course-name">' + escapeHtml(course.name || '未命名课程') + '</div><div class="course-meta">' + escapeHtml(meta) + '</div></button>';
+  }).join('');
+}
+async function enterCourse(index) {
+  if (courseListLoading || onlineCaptureRunning) return showToast('当前课程正在处理，请等待完成');
+  var course = courses[index];
+  if (!course) return;
+  var key = courseKey(course);
+  activeCourse = course;
+  selectedCourseKeys.clear();
+  selectedCourseKeys.add(key);
+  document.getElementById('current-course-name').textContent = course.name || '未命名课程';
+  document.getElementById('current-content-badge').textContent = onlineContentName();
+  document.getElementById('course-browser-view').classList.add('hidden');
+  document.getElementById('course-detail-view').classList.remove('hidden');
+  setStats('online', {});
+  setProgress('online', 0, '0%');
+  updateCourseDetailControls();
+  await loadTasks(course);
+}
+async function toggleCourse(index) { return enterCourse(index); }
+async function loadTasks(course) {
+  var backend = getApi();
+  if (!backend) return;
+  courseListLoading = true;
+  updateCourseDetailControls();
+  var requestedMode = onlineContentMode;
+  var contentName = onlineContentName();
+  document.getElementById('task-title').innerHTML = '<span class="icon-badge">📋</span>' + contentName + '列表';
+  document.getElementById('online-task-list').innerHTML = '<div class="empty-state">正在读取' + contentName + '...</div>';
+  var res;
+  try {
+    var request = backend.online_load_content
+      ? backend.online_load_content(course, requestedMode)
+      : backend.online_load_tasks(course);
+    res = await callWithTimeout(request, 8000, '启动读取' + contentName + '超时，请重试');
+  } catch (err) {
+    courseListLoading = false;
+    updateCourseDetailControls();
+    document.getElementById('online-task-list').innerHTML = '<div class="empty-state">' + escapeHtml(err.message || '读取失败') + '</div>';
+    return showToast(err.message || ('读取' + contentName + '失败'));
+  }
+  if (!res.ok) {
+    courseListLoading = false;
+    updateCourseDetailControls();
+    if (res.browser_closed) handleBrowserClosed(res.error);
+    else document.getElementById('online-task-list').innerHTML = '<div class="empty-state">' + escapeHtml(res.error || '读取失败') + '</div>';
+    return showToast(res.error || ('读取' + contentName + '失败'));
+  }
+  if (res.job_id) return watchTaskJob(res.job_id, requestedMode);
+  renderTaskRows(res.tasks || []);
+  courseListLoading = false;
+  updateCourseDetailControls();
+}
+function renderTaskRows(tasks) {
+  renderFiles('online-task-list', tasks.map(function(task) {
+    var complete = task.completed_detail || task.answer_id || (task.url && (task.url.indexOf('answerId') >= 0 || task.url.indexOf('workAnswerId') >= 0));
+    return {name: task.title || ('未命名' + onlineContentName()), status: complete ? 'ok' : 'pending', meta: task.status || ''};
+  }));
+}
+function watchTaskJob(jobId, requestedMode) {
+  var key = 'tasks';
+  var startedAt = Date.now();
+  var contentName = requestedMode === 'chapter' ? '章节练习' : '作业';
+  var timeoutMs = requestedMode === 'chapter' ? 900000 : 180000;
+  var busy = false;
+  if (timers[key]) clearInterval(timers[key]);
+  timers[key] = setInterval(async function() {
+    if (Date.now() - startedAt > timeoutMs) {
+      startedAt = Date.now();
+      document.getElementById('online-task-list').innerHTML = '<div class="empty-state">仍在读取' + contentName + '，请保持当前课程页面...</div>';
+      showToast('当前课程仍在读取，请稍候');
+    }
+    if (busy) return;
+    var backend = api();
+    if (!backend) return;
+    busy = true;
+    var res;
+    try {
+      res = await callWithTimeout(backend.get_job(jobId), 5000, '获取任务状态超时');
+    } catch (err) {
+      busy = false;
+      return;
+    }
+    busy = false;
+    if (!res.ok) {
+      clearInterval(timers[key]);
+      courseListLoading = false;
+      updateCourseDetailControls();
+      document.getElementById('online-task-list').innerHTML = '<div class="empty-state">' + escapeHtml(res.error || '读取失败') + '</div>';
+      return;
+    }
+    var job = res.job;
+    if (onlineContentMode !== requestedMode) {
+      clearInterval(timers[key]);
+      courseListLoading = false;
+      updateCourseDetailControls();
+      return;
+    }
+    document.getElementById('online-task-list').innerHTML = '<div class="empty-state">' + escapeHtml(job.message || ('正在读取' + contentName + '...')) + '</div>';
+    if (job.state === 'done') {
+      clearInterval(timers[key]);
+      courseListLoading = false;
+      updateCourseDetailControls();
+      renderTaskRows(job.tasks || []);
+      courses = courses.map(function(course) {
+        if (courseKey(course) === job.course_key) course[requestedMode === 'chapter' ? 'chapter_count' : 'homework_count'] = (job.tasks || []).length;
+        return course;
+      });
+      renderCourses();
+      showToast(job.message || (contentName + '列表已读取'));
+    } else if (job.state === 'failed') {
+      clearInterval(timers[key]);
+      courseListLoading = false;
+      updateCourseDetailControls();
+      if (job.browser_closed) handleBrowserClosed(job.message);
+      else document.getElementById('online-task-list').innerHTML = '<div class="empty-state">' + escapeHtml(job.message || '读取失败') + '</div>';
+      showToast(job.message || ('读取' + contentName + '失败'));
+    } else if (job.state === 'verification_required') {
+      clearInterval(timers[key]);
+      courseListLoading = false;
+      updateCourseDetailControls();
+      document.getElementById('online-continue-btn').classList.remove('hidden');
+      document.getElementById('online-login-status').textContent = job.message || '需要完成浏览器验证';
+      document.getElementById('online-task-list').innerHTML = '<div class="empty-state">' + escapeHtml(job.message || '需要完成浏览器验证') + '</div>';
+      showToast(job.message || '需要完成浏览器验证');
+    }
+  }, 1200);
+}
+async function chooseOutputRoot() {
+  var backend = getApi();
+  if (!backend) return;
+  var res;
+  try {
+    res = await backend.choose_output_root();
+  } catch (err) {
+    return showToast((err && err.message) || '选择失败');
+  }
+  if (res.cancelled) return;
+  if (!res.ok) return showToast(res.error || '选择失败');
+  onlineOutputRoot = res.folder;
+  onlineOutputCustom = true;
+  document.getElementById('online-output-root').textContent = res.folder;
+  await saveCurrentSettings();
+}
+async function startOnlineCapture() {
+  var backend = getApi();
+  if (!backend) return;
+  if (!activeCourse) return showToast('请先进入一门课程');
+  var selected = [activeCourse];
+  await saveCurrentSettings();
+  var btn = document.getElementById('online-start-btn');
+  onlineCaptureRunning = true;
+  updateCourseDetailControls();
+  var options = {with_images: isOn('online-with-images'), resume: isOn('online-resume'), content_mode: onlineContentMode};
+  var res;
+  try {
+    res = await backend.start_online_capture(selected, onlineOutputRoot, options);
+  } catch (err) {
+    onlineCaptureRunning = false;
+    updateCourseDetailControls();
+    return showToast((err && err.message) || '启动失败');
+  }
+  if (!res.ok) {
+    onlineCaptureRunning = false;
+    updateCourseDetailControls();
+    if (res.browser_closed) handleBrowserClosed(res.error);
+    return showToast(res.error || '启动失败');
+  }
+  watchJob(res.job_id, 'online', function() {
+    onlineCaptureRunning = false;
+    updateCourseDetailControls();
+  });
+}
+</script>
+</body>
+</html>
